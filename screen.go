@@ -22,6 +22,8 @@ type Screen struct {
 
 	Fg, Bg termbox.Attribute
 
+	SizeX, SizeY int // size of screen
+
 	EventFunc EventFunc // global event function
 
 	quit chan bool
@@ -33,9 +35,13 @@ func New(timeout time.Duration) *Screen {
 		panic(err)
 	}
 
+	sX, sY := termbox.Size()
+
 	return &Screen{
 		timeout: timeout,
 		quit:    make(chan bool),
+		SizeX:   sX,
+		SizeY:   sY,
 	}
 }
 
@@ -47,11 +53,15 @@ func (s *Screen) NewWindow() *Window {
 	s.Lock()
 	defer s.Unlock()
 
+	sX, sY := termbox.Size()
+
 	win := &Window{
 		screen:     s,
 		AutoResize: true,
 		Fg:         s.Fg,
 		Bg:         s.Bg,
+		SizeX:      sX,
+		SizeY:      sY,
 	}
 
 	s.Windows = append(s.Windows, win)
@@ -133,8 +143,12 @@ func (s *Screen) Run() (err error) {
 				return ev.Err
 			}
 
-			if win.AutoResize && ev.Type == termbox.EventResize {
-				draw = true
+			if ev.Type == termbox.EventResize {
+				s.SizeX, s.SizeY = termbox.Size()
+				if win.AutoResize {
+					win.resize()
+					draw = true
+				}
 			}
 
 			if s.EventFunc != nil {

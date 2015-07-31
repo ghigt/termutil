@@ -46,10 +46,30 @@ func main() {
 			"+---+",
 		}
 	}
+	swin1 := win1.NewSubWindow()
+	swin1.X = 1
+	swin1.Y = 2
+	swin1.UpdateFunc = func() []string {
+		return []string{
+			"+-+",
+			"| |",
+			"+-+",
+		}
+	}
+	sswin := swin1.NewSubWindow()
+	sswin.X = 1
+	sswin.Y = 1
+	sswin.UpdateFunc = func() []string {
+		return []string{
+			"*",
+		}
+	}
 
 	win2 := screen.NewWindow()
 	win2.X = 15
 	win2.Y = 15
+	win2.SizeX = 3
+	win2.SizeY = 3
 
 	win2.UpdateFunc = func() []string {
 		if win2.X == 4 && win2.Y == 4 {
