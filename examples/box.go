@@ -20,19 +20,24 @@ var colors = []termbox.Attribute{
 
 func main() {
 
-	screen := termutil.New(time.Second)
+	var err error
 
-	screen.EventFunc = func(ev termbox.Event) {
+	err = termutil.Init(time.Second)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	termutil.Screen.EventFunc = func(ev termbox.Event) {
 		switch ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
 			case termbox.KeyEsc:
-				screen.Quit()
+				termutil.Quit()
 			}
 		}
 	}
 
-	win1 := screen.NewWindow()
+	win1 := termutil.NewWindow()
 	win1.X = 3
 	win1.Y = 2
 
@@ -65,7 +70,7 @@ func main() {
 		}
 	}
 
-	win2 := screen.NewWindow()
+	win2 := termutil.NewWindow()
 	win2.X = 15
 	win2.Y = 15
 	win2.SizeX = 3
@@ -94,8 +99,8 @@ func main() {
 		}
 	}
 
-	err := screen.Run()
-	screen.End()
+	err = termutil.Run()
+	termutil.End()
 
 	if err != nil {
 		log.Fatal(err)

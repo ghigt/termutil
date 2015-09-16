@@ -6,108 +6,90 @@ package termutil
 
 import (
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/nsf/termbox-go"
 )
 
-type Screen struct {
-	sync.Mutex
-
+// MainWindow controls all windows inside it.
+type MainWindow struct {
 	current *Window
-	Windows []*Window
+	windows []*Window
 
 	timeout time.Duration
 
 	Fg, Bg termbox.Attribute
-
-	SizeX, SizeY int // size of screen
 
 	EventFunc EventFunc // global event function
 
 	quit chan bool
 }
 
-func New(timeout time.Duration) *Screen {
+var Screen *MainWindow
+
+func Init(timeout time.Duration) error {
 
 	if err := termbox.Init(); err != nil {
-		panic(err)
+		return err
 	}
 
-	sX, sY := termbox.Size()
-
-	return &Screen{
+	Screen = &MainWindow{
 		timeout: timeout,
 		quit:    make(chan bool),
-		SizeX:   sX,
-		SizeY:   sY,
 	}
+
+	return nil
 }
 
-func (s *Screen) End() {
+func End() {
 	termbox.Close()
 }
 
-func (s *Screen) NewWindow() *Window {
-	s.Lock()
-	defer s.Unlock()
-
-	sX, sY := termbox.Size()
-
-	win := &Window{
-		screen:     s,
-		AutoResize: true,
-		Fg:         s.Fg,
-		Bg:         s.Bg,
-		SizeX:      sX,
-		SizeY:      sY,
-	}
-
-	s.Windows = append(s.Windows, win)
-	s.current = win
-
-	return win
-}
-
-func (s *Screen) Quit() {
+func Quit() {
 	go func() {
-		s.quit <- true
+		Screen.quit <- true
 	}()
 }
 
-func (s *Screen) Focus(w *Window) {
-	s.Lock()
-	defer s.Unlock()
-
-	s.current = w
+func Focus(w *Window) {
+	Screen.current = w
 }
 
-func (s *Screen) Update() {
-
-	for _, w := range s.Windows {
+func update() {
+	for _, w := range Screen.windows {
 		w.update()
 	}
 }
 
-func (s *Screen) Draw() error {
+func draw() error {
 
-	if err := termbox.Clear(s.Fg, s.Bg); err != nil {
+	if err := termbox.Clear(Screen.Fg, Screen.Bg); err != nil {
 		return err
 	}
 
-	for _, w := range s.Windows {
+	for _, w := range Screen.windows {
 		w.draw()
 	}
 
 	return nil
 }
 
-func (s *Screen) Run() (err error) {
+func resize(ws []*Window) (redraw bool) {
+	for _, w := range ws {
+		redraw = resize(w.SubWindows)
+		if w.AutoResize {
+			w.resize()
+			redraw = true
+		}
+	}
+	return
+}
+
+func Run() (err error) {
 
 	var ev termbox.Event
-	tc := time.Tick(s.timeout)
-	draw := true
+	tc := time.Tick(Screen.timeout)
+	redraw := true
 
 	pe := make(chan termbox.Event)
 	go func(pe chan termbox.Event) {
@@ -117,26 +99,26 @@ func (s *Screen) Run() (err error) {
 	}(pe)
 
 	for {
-		if draw {
-			s.Update()
-			if err = s.Draw(); err != nil {
+		if redraw {
+			update()
+			if err = draw(); err != nil {
 				return
 			}
 		}
 		termbox.Flush()
-		draw = false
+		redraw = false
 
-		win := s.current
+		win := Screen.current
 		if win == nil {
 			return errors.New("no current window")
 		}
 
 		select {
-		case <-s.quit:
+		case <-Screen.quit:
 			return
 
 		case <-tc:
-			draw = true
+			redraw = true
 
 		case ev = <-pe:
 			if ev.Type == termbox.EventError {
@@ -144,20 +126,18 @@ func (s *Screen) Run() (err error) {
 			}
 
 			if ev.Type == termbox.EventResize {
-				s.SizeX, s.SizeY = termbox.Size()
-				if win.AutoResize {
-					win.resize()
-					draw = true
+				if resize(Screen.windows) {
+					redraw = true
 				}
 			}
 
-			if s.EventFunc != nil {
-				s.EventFunc(ev)
-				draw = true
+			if Screen.EventFunc != nil {
+				Screen.EventFunc(ev)
+				redraw = true
 			}
 			if win.EventFunc != nil {
 				win.EventFunc(ev)
-				draw = true
+				redraw = true
 			}
 		}
 	}

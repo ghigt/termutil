@@ -11,13 +11,12 @@ type UpdateFunc func() []string
 type EventFunc func(termbox.Event)
 
 type Window struct {
-	screen *Screen
-
 	X, Y         int
 	SizeX, SizeY int
 	Fg, Bg       termbox.Attribute
 	AutoResize   bool
 	rows         []string
+	Widget       Widget
 
 	UpdateFunc UpdateFunc
 	EventFunc  EventFunc
@@ -27,14 +26,11 @@ type Window struct {
 	SubWindows []*Window
 }
 
-func (w *Window) Quit() {
-	go func() {
-		w.screen.quit <- true
-	}()
-}
-
 func (w *Window) update() {
-	w.rows = w.UpdateFunc()
+
+	if w.UpdateFunc != nil {
+		w.rows = w.UpdateFunc()
+	}
 
 	for _, sub := range w.SubWindows {
 		sub.update()
@@ -55,7 +51,9 @@ func (w *Window) drawWin() {
 	ax := w.AbsX()
 	ay := w.AbsY()
 
-	sizeY := w.screen.SizeY - ay
+	termX, termY := termbox.Size()
+
+	sizeY := termY - ay
 
 	if sizeY > w.SizeY {
 		sizeY = w.SizeY
@@ -65,7 +63,7 @@ func (w *Window) drawWin() {
 	}
 
 	for y := ay; y-ay < sizeY; y++ {
-		sizeX := w.screen.SizeX - ax
+		sizeX := termX - ax
 
 		if sizeX > w.SizeX {
 			sizeX = w.SizeX
@@ -113,16 +111,32 @@ func (w *Window) AbsY() int {
 func (w *Window) NewSubWindow() *Window {
 
 	win := &Window{
-		screen:     w.screen,
 		parent:     w,
-		AutoResize: true,
 		Fg:         w.Fg,
 		Bg:         w.Bg,
 		SizeX:      w.SizeX,
 		SizeY:      w.SizeY,
+		AutoResize: true,
 	}
 
 	w.SubWindows = append(w.SubWindows, win)
+
+	return win
+}
+
+func NewWindow() *Window {
+
+	win := &Window{
+		AutoResize: true,
+
+		Fg: Screen.Fg,
+		Bg: Screen.Bg,
+	}
+
+	win.SizeX, win.SizeY = termbox.Size()
+
+	Screen.windows = append(Screen.windows, win)
+	Screen.current = win
 
 	return win
 }
