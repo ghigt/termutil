@@ -14,13 +14,12 @@ type Window struct {
 	X, Y         int
 	SizeX, SizeY int
 	Fg, Bg       termbox.Attribute
-	AutoResize   bool
-	rows         []string
-	Widget       Widget
+	// AutoResize does not allow a fix SizeX and SizeY
+	AutoResize bool
+	rows       []string
 
 	UpdateFunc UpdateFunc
 	EventFunc  EventFunc
-	ResizeFunc func()
 
 	parent     *Window
 	SubWindows []*Window
@@ -79,14 +78,17 @@ func (w *Window) drawWin() {
 
 func (w *Window) resize() {
 
-	if w.AutoResize && w.ResizeFunc != nil {
-		w.ResizeFunc()
+	if w.AutoResize {
+		if w.parent == nil {
+			w.SizeX, w.SizeY = termbox.Size()
+		} else {
+			w.SizeX = w.parent.SizeX - w.AbsX()
+			w.SizeY = w.parent.SizeY - w.AbsY()
+		}
 	}
 
 	for _, sub := range w.SubWindows {
-		if sub.AutoResize && sub.ResizeFunc != nil {
-			sub.ResizeFunc()
-		}
+		sub.resize()
 	}
 }
 

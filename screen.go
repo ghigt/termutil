@@ -76,7 +76,6 @@ func draw() error {
 
 func resize(ws []*Window) (redraw bool) {
 	for _, w := range ws {
-		redraw = resize(w.SubWindows)
 		if w.AutoResize {
 			w.resize()
 			redraw = true
