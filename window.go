@@ -6,17 +6,16 @@ package termutil
 
 import "github.com/nsf/termbox-go"
 
-type UpdateFunc func() []string
+type UpdateFunc func() []Row
 
 type EventFunc func(termbox.Event)
 
 type Window struct {
 	X, Y         int
 	SizeX, SizeY int
-	Fg, Bg       termbox.Attribute
 	// AutoResize does not allow a fix SizeX and SizeY
 	AutoResize bool
-	rows       []string
+	rows       []Row
 
 	UpdateFunc UpdateFunc
 	EventFunc  EventFunc
@@ -71,7 +70,8 @@ func (w *Window) drawWin() {
 			sizeX = len(w.rows[y-ay])
 		}
 		for x := ax; x-ax < sizeX; x++ {
-			termbox.SetCell(x, y, rune(w.rows[y-ay][x-ax]), w.Fg, w.Bg)
+			c := w.rows[y-ay][x-ax]
+			termbox.SetCell(x, y, c.C, c.Fg, c.Bg)
 		}
 	}
 }
@@ -114,8 +114,6 @@ func (w *Window) NewSubWindow() *Window {
 
 	win := &Window{
 		parent:     w,
-		Fg:         w.Fg,
-		Bg:         w.Bg,
 		SizeX:      w.SizeX,
 		SizeY:      w.SizeY,
 		AutoResize: true,
@@ -130,9 +128,6 @@ func NewWindow() *Window {
 
 	win := &Window{
 		AutoResize: true,
-
-		Fg: Screen.Fg,
-		Bg: Screen.Bg,
 	}
 
 	win.SizeX, win.SizeY = termbox.Size()

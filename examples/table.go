@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -55,18 +56,31 @@ func main() {
 		}
 	}
 
-	win := termutil.NewWindow()
+	head := termutil.NewWindow()
+	head.SizeY = 1
+	head.UpdateFunc = func() []termutil.Row {
+		return termutil.StringsToRows([]string{fmt.Sprintf("%v", time.Now())}, 0, 0)
+	}
 
-	win.UpdateFunc = func() []string {
+	win := termutil.NewWindow()
+	win.Y = 1
+
+	win.UpdateFunc = func() []termutil.Row {
 		wg := &termutil.WidgetTable{
-			Header: []termutil.HeaderInfo{
-				{"name", 20},
-				{"age", 10},
-				{"hobby", 0},
-				{"height", 10},
+			Header: &termutil.Header{
+				Titles: []termutil.HeaderTitle{
+					{"name", 20},
+					{"age", 10},
+					{"hobby", 0},
+					{"height", 10},
+				},
+				Fg:       termbox.ColorBlack,
+				Bg:       termbox.ColorGreen,
+				FgActive: termbox.ColorBlack,
+				BgActive: termbox.ColorBlue,
 			},
+			Body: bodys[time.Now().Nanosecond()%3],
 		}
-		wg.Body = bodys[time.Now().Nanosecond()%3]
 		return wg.Update(win)
 	}
 
