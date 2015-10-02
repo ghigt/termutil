@@ -24,16 +24,19 @@ var bodys = [][][]string{
 		{"Jean", "14", "I like sport...", "158"},
 		{"Patrick", "46", "I travel", "190"},
 		{"Jeremy", "54", "I read books", "179"},
+		{"Paul", "4", "I like donuts", "19"},
 	},
 	{
 		{"Jean", "53", "I like sport... a lot", "138"},
 		{"Patrick", "102", "I don't travel", "185"},
 		{"Jeremy", "43", "I eat books", "123"},
+		{"Paul", "99", "I hate donuts", "103"},
 	},
 	{
 		{"Jean", "44", "I play football...", "160"},
 		{"Patrick", "12", "I fly", "180"},
 		{"Jeremy", "24", "I'm a books", "143"},
+		{"Paul", "44", "I dislike donuts", "34"},
 	},
 }
 
@@ -59,30 +62,37 @@ func main() {
 	head := termutil.NewWindow()
 	head.SizeY = 1
 	head.UpdateFunc = func() []termutil.Row {
-		return termutil.StringsToRows([]string{fmt.Sprintf("%v", time.Now())}, 0, 0)
+		return termutil.StringsToRows([]string{
+			fmt.Sprintf("WidgetTable: %v", time.Now().Format("02/01/2006 15:04:05"))}, 0, 0)
 	}
 
 	win := termutil.NewWindow()
 	win.Y = 1
 
-	win.UpdateFunc = func() []termutil.Row {
-		wg := &termutil.WidgetTable{
-			Header: &termutil.Header{
-				Titles: []termutil.HeaderTitle{
-					{"name", 20},
-					{"age", 10},
-					{"hobby", 0},
-					{"height", 10},
-				},
-				Fg:       termbox.ColorBlack,
-				Bg:       termbox.ColorGreen,
-				FgActive: termbox.ColorBlack,
-				BgActive: termbox.ColorBlue,
+	wg := &termutil.WidgetTable{
+		Header: &termutil.Header{
+			Titles: []termutil.HeaderTitle{
+				{"name", 20},
+				{"id", 10},
+				{"hobby", 0},
+				{"height", 10},
 			},
-			Body: bodys[time.Now().Nanosecond()%3],
-		}
+			Fg:       termbox.ColorBlack,
+			Bg:       termbox.ColorGreen,
+			FgActive: termbox.ColorBlack,
+			BgActive: termbox.ColorBlue,
+		},
+		Body: &termutil.Body{
+			Active:   0,
+			FgActive: termbox.ColorDefault,
+			BgActive: termbox.AttrReverse,
+		},
+	}
+	win.UpdateFunc = func() []termutil.Row {
+		wg.Body.Data = bodys[time.Now().Nanosecond()%3]
 		return wg.Update(win)
 	}
+	win.EventFunc = wg.EventFunc
 
 	err = termutil.Run()
 	termutil.End()

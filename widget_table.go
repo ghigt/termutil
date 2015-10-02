@@ -10,10 +10,35 @@ import (
 
 type WidgetTable struct {
 	Header *Header
+	Body   *Body
+}
 
-	Body [][]string
+func (wg *WidgetTable) Update(win *Window) []Row {
 
-	Active int
+	wg.Header.fillSpace()
+
+	var out []Row
+
+	out = append(out, wg.Header.buildRow(win.SizeX))
+	out = append(out, wg.Body.buildRows(wg.Header.Titles, win.SizeX, win.SizeY-1)...)
+
+	return out
+}
+
+func (wg *WidgetTable) EventFunc(ev termbox.Event) {
+	switch ev.Type {
+	case termbox.EventKey:
+		switch ev.Key {
+		case termbox.KeyArrowDown:
+			if wg.Body.Active < len(wg.Body.Data)-1 {
+				wg.Body.Active += 1
+			}
+		case termbox.KeyArrowUp:
+			if wg.Body.Active > 0 {
+				wg.Body.Active -= 1
+			}
+		}
+	}
 }
 
 type Header struct {
@@ -25,25 +50,22 @@ type Header struct {
 	// Colors for the active tab
 	FgActive termbox.Attribute
 	BgActive termbox.Attribute
+
+	Active   int
+	IsActive bool // Is a tab activated
 }
 
-type HeaderTitle struct {
-	Name string
-	// Percentage of size
-	// When equal to 0, it takes the bigger space available
-	Per int
-}
-
-func (h Header) buildRow(winX int, active int) Row {
-	row := make(Row, winX)
+func (h Header) buildRow(sizeX int) Row {
 	var fg termbox.Attribute
 	var bg termbox.Attribute
 
-	for it, ir := 0, 0; it < len(h.Titles) && ir < winX; it++ {
+	row := make(Row, sizeX)
 
-		size := h.Titles[it].Per * winX / 100
+	for it, ir := 0, 0; it < len(h.Titles) && ir < sizeX; it++ {
 
-		if active == it {
+		size := h.Titles[it].Per * sizeX / 100
+
+		if h.IsActive && h.Active == it {
 			fg = h.FgActive
 			bg = h.BgActive
 		} else {
@@ -53,7 +75,7 @@ func (h Header) buildRow(winX int, active int) Row {
 
 		name := h.Titles[it].Name
 
-		for i := 0; i < size && ir < winX; i++ {
+		for i := 0; i < size && ir < sizeX; i++ {
 			cell := Cell{
 				Fg: fg,
 				Bg: bg,
@@ -98,41 +120,70 @@ func (h *Header) fillSpace() {
 	}
 }
 
-func (wg *WidgetTable) Update(win *Window) []Row {
-	out := make([]Row, len(wg.Body)+1)
-
-	wg.Header.fillSpace()
-
-	out[0] = wg.Header.buildRow(win.SizeX, wg.Active)
-
-	for i, b := range wg.Body {
-		out[i+1] = buildRow(b, wg.Header, win.SizeX)
-	}
-
-	return out
+type HeaderTitle struct {
+	Name string
+	// Percentage of size
+	// When equal to 0, it takes the bigger space available
+	Per int
 }
 
-func buildRow(row []string, his *Header, winX int) Row {
-	rowf := make(Row, winX)
-	var ir int
+type Body struct {
+	Data   [][]string
+	Active int
 
-	for is, r := range row {
+	Fg termbox.Attribute
+	Bg termbox.Attribute
 
-		if ir >= winX {
-			break
+	// Colors for the active row
+	FgActive termbox.Attribute
+	BgActive termbox.Attribute
+}
+
+func (b Body) buildRows(h []HeaderTitle, sizeX, sizeY int) []Row {
+	var fg termbox.Attribute
+	var bg termbox.Attribute
+
+	rows := make([]Row, sizeY)
+
+	for ib := 0; ib < len(b.Data) && ib < sizeY; ib++ {
+
+		d := b.Data[ib]
+
+		row := make(Row, sizeX)
+
+		if b.Active == ib {
+			fg = b.FgActive
+			bg = b.BgActive
+		} else {
+			fg = b.Fg
+			bg = b.Bg
 		}
 
-		size := his.Titles[is].Per * winX / 100
+		for it, ir := 0, 0; it < len(d) && ir < sizeX; it++ {
 
-		for i := 0; i < size && ir < winX; i++ {
-			if i < len(r) {
-				rowf[ir].C = rune(r[i])
-			} else {
-				rowf[ir].C = ' '
+			size := h[it].Per * sizeX / 100
+
+			name := d[it]
+
+			for i := 0; i < size && ir < sizeX; i++ {
+				cell := Cell{
+					Fg: fg,
+					Bg: bg,
+				}
+
+				if i < len(name) {
+					cell.C = rune(name[i])
+				} else {
+					cell.C = ' '
+				}
+				row[ir] = cell
+
+				ir++
 			}
-			ir++
 		}
+
+		rows[ib] = row
 	}
 
-	return rowf
+	return rows
 }

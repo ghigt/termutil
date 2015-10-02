@@ -6,5 +6,4 @@ package termutil
 
 type Widget interface {
 	Update(*Window) []string
-	//resize()
 }
